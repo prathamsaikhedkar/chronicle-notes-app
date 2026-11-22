@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Fraunces', serif;
+    --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input, textarea {
+    user-select: text;
+  }
+}
+
+.font-editorial {
+  font-family: var(--font-serif);
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+/* Subtle parchment grain effect for cover mode */
+.bg-parchment {
+  background-color: #fcfbf7;
+  background-image: radial-gradient(#e5dfd5 0.75px, transparent 0.75px);
+  background-size: 24px 24px;
+}
+
+/* Subtle luxury obsidian grain for unlocked vault mode */
+.bg-vault {
+  background-color: #0b0f14;
+  background-image: radial-gradient(rgba(217, 180, 107, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Custom smooth scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 140, 130, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 140, 130, 0.45);
+}
