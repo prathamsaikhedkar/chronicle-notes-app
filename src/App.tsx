@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 export const MainApp: React.FC = () => {
-  const { isConfigured, isLocked, isEmergencyUnlocked, lockVault } = useAuth();
+  const { isConfigured, isInitializing, isLocked, isEmergencyUnlocked, lockVault } = useAuth();
   const {
     coverNotes,
     coverTasks,
@@ -215,7 +215,7 @@ export const MainApp: React.FC = () => {
         </div>
 
         {/* Modals & Secret Trigger */}
-        {!isConfigured && <SetupSecretModal />}
+        {!isInitializing && !isConfigured && <SetupSecretModal />}
 
         <UnlockModal
           isOpen={isUnlockModalOpen}

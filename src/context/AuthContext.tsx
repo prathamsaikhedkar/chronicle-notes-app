@@ -25,6 +25,7 @@ import { EMERGENCY_RESCUE_TOKEN } from '../services/puzzles';
 
 interface AuthContextType {
   isConfigured: boolean; // whether vault PIN/Pattern is already set up
+  isInitializing: boolean; // true while reading metadata from IndexedDB
   isLocked: boolean; // true = vault is locked
   activeKey: CryptoKey | null;
   emergencyKey: CryptoKey | null;
@@ -42,7 +43,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [isConfigured, setIsConfigured] = useState<boolean>(false);
+  const [isConfigured, setIsConfigured] = useState<boolean>(true); // default true to avoid flash of setup modal
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [activeKey, setActiveKey] = useState<CryptoKey | null>(null);
   const [emergencyKey, setEmergencyKey] = useState<CryptoKey | null>(null);
@@ -54,16 +56,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   });
 
   const reloadMetadata = useCallback(async () => {
-    const meta = await getVaultMetadata();
-    const sets = await getUserSettings();
-    setSettingsState(sets);
-    if (meta) {
-      setMetadata(meta);
-      setIsConfigured(true);
-      setIsLocked(true);
-    } else {
-      setIsConfigured(false);
-      setIsLocked(true);
+    try {
+      const meta = await getVaultMetadata();
+      const sets = await getUserSettings();
+      setSettingsState(sets);
+      if (meta) {
+        setMetadata(meta);
+        setIsConfigured(true);
+        setIsLocked(true);
+      } else {
+        setMetadata(null);
+        setIsConfigured(false);
+        setIsLocked(true);
+      }
+    } finally {
+      setIsInitializing(false);
     }
   }, []);
 
@@ -287,6 +294,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider
       value={{
         isConfigured,
+        isInitializing,
         isLocked,
         activeKey,
         emergencyKey,
