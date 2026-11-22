@@ -14,7 +14,13 @@ import {
   saveVaultMetadata,
   getUserSettings,
   saveUserSettings,
+  getAllEncryptedNotes,
+  saveEncryptedNote,
+  getAllEncryptedTasks,
+  saveEncryptedTask,
 } from '../services/storage';
+import { decryptData, encryptData } from '../services/crypto';
+import type { DecryptedNote, DecryptedTask } from '../types';
 import { EMERGENCY_RESCUE_TOKEN } from '../services/puzzles';
 
 interface AuthContextType {
@@ -168,23 +174,74 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return { success: false, error: 'Current credential is incorrect.' };
     }
 
-    const newSalt = generateRandomBytes(16);
-    const newMasterKey = await deriveKeyFromSecret(newSecret, newSalt);
-    const { verifierCiphertext, verifierIv } = await createVaultVerificationToken(newMasterKey);
+    try {
+      // 1. Decrypt all existing notes and tasks with oldKey
+      const rawNotes = await getAllEncryptedNotes();
+      const rawTasks = await getAllEncryptedTasks();
 
-    const updatedMeta: VaultMetadata = {
-      ...metadata,
-      unlockMethod: newMethod,
-      salt: arrayBufferToBase64(newSalt),
-      verifierCiphertext,
-      verifierIv,
-      lastUnlockedAt: Date.now(),
-    };
+      const decryptedNotes: { note: DecryptedNote; original: typeof rawNotes[0] }[] = [];
+      for (const n of rawNotes) {
+        try {
+          const dec = await decryptData<DecryptedNote>(n.ciphertext, n.iv, oldKey);
+          decryptedNotes.push({ note: dec, original: n });
+        } catch (e) {
+          console.error('Failed to decrypt note during key rotation', n.id, e);
+        }
+      }
 
-    await saveVaultMetadata(updatedMeta);
-    setMetadata(updatedMeta);
-    setActiveKey(newMasterKey);
-    return { success: true };
+      const decryptedTasks: { task: DecryptedTask; original: typeof rawTasks[0] }[] = [];
+      for (const t of rawTasks) {
+        try {
+          const dec = await decryptData<DecryptedTask>(t.ciphertext, t.iv, oldKey);
+          decryptedTasks.push({ task: dec, original: t });
+        } catch (e) {
+          console.error('Failed to decrypt task during key rotation', t.id, e);
+        }
+      }
+
+      // 2. Generate new salt and new master key
+      const newSalt = generateRandomBytes(16);
+      const newMasterKey = await deriveKeyFromSecret(newSecret, newSalt);
+      const { verifierCiphertext, verifierIv } = await createVaultVerificationToken(newMasterKey);
+
+      // 3. Re-encrypt all notes with newMasterKey (preserve emergencyKey ciphertext if semi-confidential)
+      for (const item of decryptedNotes) {
+        const reEnc = await encryptData(item.note, newMasterKey);
+        await saveEncryptedNote({
+          ...item.original,
+          iv: reEnc.iv,
+          ciphertext: reEnc.ciphertext,
+        });
+      }
+
+      // 4. Re-encrypt all tasks with newMasterKey
+      for (const item of decryptedTasks) {
+        const reEnc = await encryptData(item.task, newMasterKey);
+        await saveEncryptedTask({
+          ...item.original,
+          iv: reEnc.iv,
+          ciphertext: reEnc.ciphertext,
+        });
+      }
+
+      // 5. Update vault metadata
+      const updatedMeta: VaultMetadata = {
+        ...metadata,
+        unlockMethod: newMethod,
+        salt: arrayBufferToBase64(newSalt),
+        verifierCiphertext,
+        verifierIv,
+        lastUnlockedAt: Date.now(),
+      };
+
+      await saveVaultMetadata(updatedMeta);
+      setMetadata(updatedMeta);
+      setActiveKey(newMasterKey);
+      return { success: true };
+    } catch (err) {
+      console.error('Error during credential rotation', err);
+      return { success: false, error: 'Failed to rotate encryption key for records.' };
+    }
   };
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {

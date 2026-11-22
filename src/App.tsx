@@ -242,56 +242,57 @@ export const MainApp: React.FC = () => {
   /* -------------------------------------------------------------------------- */
   return (
     <div className="min-h-screen bg-vault text-stone-200 flex flex-col font-sans transition-colors duration-300">
-      {/* Vault Header: Now full security controls & settings are revealed */}
-      <header className="sticky top-0 z-30 bg-[#0b0f14]/90 backdrop-blur-md border-b border-stone-800/80 px-4 sm:px-6 py-3.5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-mono-code text-xs font-semibold shadow-[0_0_12px_rgba(245,158,11,0.2)]">
-              <Unlock className="w-4 h-4" />
+      {/* Vault Header: Responsive & compact on mobile */}
+      <header className="sticky top-0 z-30 bg-[#0b0f14]/95 backdrop-blur-md border-b border-stone-800/80 px-3 sm:px-6 py-2.5 sm:py-3.5">
+        <div className="max-w-4xl mx-auto flex flex-wrap sm:flex-nowrap items-center justify-between gap-y-2.5 gap-x-2">
+          {/* Brand & status */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-mono-code text-xs font-semibold shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.2)]">
+              <Unlock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-editorial text-lg font-normal text-stone-100 leading-none">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h1 className="font-editorial text-sm sm:text-lg font-normal text-stone-100 leading-none">
                   Secret Vault
                 </h1>
-                <span className="text-[10px] font-mono-code px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                  {isEmergencyUnlocked ? 'Rescue Mode' : 'AES-GCM Decrypted'}
+                <span className="text-[9px] sm:text-[10px] font-mono-code px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 whitespace-nowrap">
+                  {isEmergencyUnlocked ? 'Rescue' : 'AES-GCM'}
                 </span>
               </div>
-              <p className="text-[11px] font-mono-code text-stone-400 mt-0.5">
+              <p className="hidden md:block text-[10px] sm:text-[11px] font-mono-code text-stone-400 mt-0.5 truncate">
                 Zeroized from memory on auto-lock or tab blur
               </p>
             </div>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="flex items-center bg-stone-900 p-0.5 rounded-full border border-stone-800">
-            <button
-              type="button"
-              onClick={() => setActiveTab('notes')}
-              className={`px-3.5 py-1 rounded-full text-xs font-medium transition-all ${
-                activeTab === 'notes'
-                  ? 'bg-stone-800 text-amber-300 shadow-sm'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              Secret Notes
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('tasks')}
-              className={`px-3.5 py-1 rounded-full text-xs font-medium transition-all ${
-                activeTab === 'tasks'
-                  ? 'bg-stone-800 text-amber-300 shadow-sm'
-                  : 'text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              Secret Checklists
-            </button>
-          </div>
+          {/* Action controls (always fit on row) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Tab Switcher */}
+            <div className="flex items-center bg-stone-900 p-0.5 rounded-full border border-stone-800">
+              <button
+                type="button"
+                onClick={() => setActiveTab('notes')}
+                className={`px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-medium transition-all ${
+                  activeTab === 'notes'
+                    ? 'bg-stone-800 text-amber-300 shadow-sm'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                Notes
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('tasks')}
+                className={`px-2.5 sm:px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-medium transition-all ${
+                  activeTab === 'tasks'
+                    ? 'bg-stone-800 text-amber-300 shadow-sm'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                Tasks
+              </button>
+            </div>
 
-          {/* Action Bar (Lock, Add, Backup, Settings) */}
-          <div className="flex items-center gap-2">
             {!isEmergencyUnlocked && (
               <button
                 type="button"
@@ -303,7 +304,7 @@ export const MainApp: React.FC = () => {
                     setIsVaultTaskEditorOpen(true);
                   }
                 }}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-semibold transition-all shadow-md"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 text-xs font-semibold transition-all shadow-md"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>New Item</span>
@@ -314,18 +315,18 @@ export const MainApp: React.FC = () => {
             <button
               type="button"
               onClick={lockVault}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-900 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-800/80 border border-stone-800 text-stone-300 text-xs font-medium transition-all"
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-stone-900 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-800/80 border border-stone-800 text-stone-300 text-xs font-medium transition-all"
               title="Lock immediately and conceal vault"
             >
               <Lock className="w-3.5 h-3.5 text-rose-400" />
-              <span className="hidden sm:inline">Lock Vault</span>
+              <span className="hidden sm:inline">Lock</span>
             </button>
 
-            {/* Backup & Settings (Only visible in unlocked mode) */}
+            {/* Backup & Settings */}
             <button
               type="button"
               onClick={() => setIsBackupOpen(true)}
-              className="p-2 rounded-full text-stone-400 hover:text-stone-200 hover:bg-stone-900 transition-colors"
+              className="p-1.5 sm:p-2 rounded-full text-stone-400 hover:text-stone-200 hover:bg-stone-900 transition-colors"
               title="Vault Backup & Restore"
             >
               <Database className="w-4 h-4" />
@@ -334,7 +335,7 @@ export const MainApp: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-full text-stone-400 hover:text-stone-200 hover:bg-stone-900 transition-colors"
+              className="p-1.5 sm:p-2 rounded-full text-stone-400 hover:text-stone-200 hover:bg-stone-900 transition-colors"
               title="Vault Settings"
             >
               <Sliders className="w-4 h-4" />
