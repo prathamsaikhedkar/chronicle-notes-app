@@ -6,6 +6,7 @@ import type {
   PublicCoverTask,
   TaskChecklistItem,
 } from '../types';
+import type { WeekdayKey, WeeklyTasksMap } from '../components/vault/WeeklyChecklist';
 import { useAuth } from '../context/AuthContext';
 import { encryptData, decryptData } from '../services/crypto';
 import {
@@ -24,7 +25,18 @@ import {
 } from '../services/storage';
 
 const VAULT_DAILY_ID = 'vault_daily_checklist';
+const VAULT_WEEKLY_ID = 'vault_weekly_checklist';
 const COVER_DAILY_STORAGE_KEY = 'chronicle_daily_tasks';
+
+const EMPTY_WEEKLY_TASKS: WeeklyTasksMap = {
+  mon: [],
+  tue: [],
+  wed: [],
+  thu: [],
+  fri: [],
+  sat: [],
+  sun: [],
+};
 
 const DEFAULT_COVER_DAILY: TaskChecklistItem[] = [
   { id: 'cd-1', text: 'Morning walk (20 mins)', completed: true },
@@ -51,6 +63,7 @@ export function useJournalAndVault() {
   const [vaultNotes, setVaultNotes] = useState<DecryptedNote[]>([]);
   const [vaultTasks, setVaultTasks] = useState<DecryptedTask[]>([]);
   const [vaultDailyTasks, setVaultDailyTasks] = useState<TaskChecklistItem[]>([]);
+  const [vaultWeeklyTasks, setVaultWeeklyTasks] = useState<WeeklyTasksMap>(EMPTY_WEEKLY_TASKS);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -72,6 +85,7 @@ export function useJournalAndVault() {
       setVaultNotes([]);
       setVaultTasks([]);
       setVaultDailyTasks([]);
+      setVaultWeeklyTasks(EMPTY_WEEKLY_TASKS);
       return;
     }
 
@@ -93,12 +107,17 @@ export function useJournalAndVault() {
 
         const decTasks: DecryptedTask[] = [];
         let dailyItems: TaskChecklistItem[] = [];
+        let weeklyMap: WeeklyTasksMap = { ...EMPTY_WEEKLY_TASKS };
         for (const raw of rawTasks) {
           try {
-            const t = await decryptData<DecryptedTask>(raw.ciphertext, raw.iv, activeKey);
             if (raw.id === VAULT_DAILY_ID) {
+              const t = await decryptData<DecryptedTask>(raw.ciphertext, raw.iv, activeKey);
               dailyItems = t.items || [];
+            } else if (raw.id === VAULT_WEEKLY_ID) {
+              const w = await decryptData<{ weekly: WeeklyTasksMap }>(raw.ciphertext, raw.iv, activeKey);
+              weeklyMap = { ...EMPTY_WEEKLY_TASKS, ...(w.weekly || {}) };
             } else {
+              const t = await decryptData<DecryptedTask>(raw.ciphertext, raw.iv, activeKey);
               decTasks.push({ ...t, confidentiality: raw.confidentiality, id: raw.id });
             }
           } catch (e) {
@@ -109,6 +128,7 @@ export function useJournalAndVault() {
         setVaultNotes(decNotes.sort((a, b) => b.updatedAt - a.updatedAt));
         setVaultTasks(decTasks.sort((a, b) => b.updatedAt - a.updatedAt));
         setVaultDailyTasks(dailyItems);
+        setVaultWeeklyTasks(weeklyMap);
       } else if (isEmergencyUnlocked && emergencyKey) {
         // Emergency puzzle recovery: only decipher semi-confidential records!
         const recNotes: DecryptedNote[] = [];
@@ -376,6 +396,58 @@ export function useJournalAndVault() {
     await persistVaultDaily(next);
   };
 
+  // --- Vault Weekly Tasks (Encrypted) ---
+  const persistVaultWeekly = async (next: WeeklyTasksMap) => {
+    if (!activeKey) return;
+    setVaultWeeklyTasks(next);
+    const now = Date.now();
+    const masterEnc = await encryptData({ weekly: next }, activeKey);
+    await saveEncryptedTask({
+      id: VAULT_WEEKLY_ID,
+      iv: masterEnc.iv,
+      ciphertext: masterEnc.ciphertext,
+      confidentiality: 'strictly-confidential',
+      createdAt: now,
+      updatedAt: now,
+    });
+  };
+
+  const addVaultWeeklyTask = async (day: WeekdayKey, text: string) => {
+    const dayItems = vaultWeeklyTasks[day] || [];
+    const next: WeeklyTasksMap = {
+      ...vaultWeeklyTasks,
+      [day]: [...dayItems, { id: `vw-${Date.now()}`, text, completed: false }],
+    };
+    await persistVaultWeekly(next);
+  };
+
+  const toggleVaultWeeklyTask = async (day: WeekdayKey, id: string) => {
+    const dayItems = vaultWeeklyTasks[day] || [];
+    const next: WeeklyTasksMap = {
+      ...vaultWeeklyTasks,
+      [day]: dayItems.map((it) => (it.id === id ? { ...it, completed: !it.completed } : it)),
+    };
+    await persistVaultWeekly(next);
+  };
+
+  const deleteVaultWeeklyTask = async (day: WeekdayKey, id: string) => {
+    const dayItems = vaultWeeklyTasks[day] || [];
+    const next: WeeklyTasksMap = {
+      ...vaultWeeklyTasks,
+      [day]: dayItems.filter((it) => it.id !== id),
+    };
+    await persistVaultWeekly(next);
+  };
+
+  const clearVaultWeeklyCompleted = async (day: WeekdayKey) => {
+    const dayItems = vaultWeeklyTasks[day] || [];
+    const next: WeeklyTasksMap = {
+      ...vaultWeeklyTasks,
+      [day]: dayItems.filter((it) => !it.completed),
+    };
+    await persistVaultWeekly(next);
+  };
+
   return {
     isLoading,
     // Cover
@@ -395,6 +467,7 @@ export function useJournalAndVault() {
     vaultNotes,
     vaultTasks,
     vaultDailyTasks,
+    vaultWeeklyTasks,
     saveVaultNote,
     removeVaultNote,
     saveVaultTask,
@@ -404,6 +477,10 @@ export function useJournalAndVault() {
     toggleVaultDailyTask,
     deleteVaultDailyTask,
     clearVaultCompletedDailyTasks,
+    addVaultWeeklyTask,
+    toggleVaultWeeklyTask,
+    deleteVaultWeeklyTask,
+    clearVaultWeeklyCompleted,
     refreshVaultData,
   };
 }

@@ -15,6 +15,7 @@ import { VaultNoteCard } from './components/vault/VaultNoteCard';
 import { VaultTaskCard } from './components/vault/VaultTaskCard';
 import { VaultNoteEditor } from './components/vault/VaultNoteEditor';
 import { VaultTaskEditor } from './components/vault/VaultTaskEditor';
+import { WeeklyChecklist } from './components/vault/WeeklyChecklist';
 
 import { SettingsModal } from './components/common/SettingsModal';
 import { ExportImportModal } from './components/common/ExportImportModal';
@@ -48,6 +49,7 @@ export const MainApp: React.FC = () => {
     vaultNotes,
     vaultTasks,
     vaultDailyTasks,
+    vaultWeeklyTasks,
     saveVaultNote,
     removeVaultNote,
     saveVaultTask,
@@ -57,6 +59,10 @@ export const MainApp: React.FC = () => {
     toggleVaultDailyTask,
     deleteVaultDailyTask,
     clearVaultCompletedDailyTasks,
+    addVaultWeeklyTask,
+    toggleVaultWeeklyTask,
+    deleteVaultWeeklyTask,
+    clearVaultWeeklyCompleted,
     refreshVaultData,
   } = useJournalAndVault();
 
@@ -512,15 +518,24 @@ export const MainApp: React.FC = () => {
             </div>
 
             {!isEmergencyUnlocked && (
-              <DailyChecklist
-                items={vaultDailyTasks}
-                onAdd={addVaultDailyTask}
-                onToggle={toggleVaultDailyTask}
-                onDelete={deleteVaultDailyTask}
-                onClearCompleted={clearVaultCompletedDailyTasks}
-                variant="vault"
-                title="Encrypted Daily Checklist"
-              />
+              <>
+                <DailyChecklist
+                  items={vaultDailyTasks}
+                  onAdd={addVaultDailyTask}
+                  onToggle={toggleVaultDailyTask}
+                  onDelete={deleteVaultDailyTask}
+                  onClearCompleted={clearVaultCompletedDailyTasks}
+                  variant="vault"
+                  title="Encrypted Daily Checklist"
+                />
+                <WeeklyChecklist
+                  weeklyTasks={vaultWeeklyTasks}
+                  onAdd={addVaultWeeklyTask}
+                  onToggle={toggleVaultWeeklyTask}
+                  onDelete={deleteVaultWeeklyTask}
+                  onClearCompleted={clearVaultWeeklyCompleted}
+                />
+              </>
             )}
 
             {vaultTasks.length > 0 ? (
