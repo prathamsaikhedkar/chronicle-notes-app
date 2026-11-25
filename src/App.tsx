@@ -18,6 +18,7 @@ import { VaultTaskEditor } from './components/vault/VaultTaskEditor';
 
 import { SettingsModal } from './components/common/SettingsModal';
 import { ExportImportModal } from './components/common/ExportImportModal';
+import { DailyChecklist } from './components/common/DailyChecklist';
 import type { DecryptedNote } from './types';
 import {
   Lock,
@@ -25,7 +26,8 @@ import {
   Plus,
   Sliders,
   Database,
-  Key,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export const MainApp: React.FC = () => {
@@ -33,23 +35,41 @@ export const MainApp: React.FC = () => {
   const {
     coverNotes,
     coverTasks,
+    coverDailyTasks,
     addCoverNote,
     removeCoverNote,
     addCoverTask,
     toggleCoverTaskItem,
     removeCoverTask,
+    addCoverDailyTask,
+    toggleCoverDailyTask,
+    deleteCoverDailyTask,
+    clearCoverCompletedDailyTasks,
     vaultNotes,
     vaultTasks,
+    vaultDailyTasks,
     saveVaultNote,
     removeVaultNote,
     saveVaultTask,
     toggleVaultTaskItem,
     removeVaultTask,
+    addVaultDailyTask,
+    toggleVaultDailyTask,
+    deleteVaultDailyTask,
+    clearVaultCompletedDailyTasks,
     refreshVaultData,
   } = useJournalAndVault();
 
   const [activeTab, setActiveTab] = useState<'notes' | 'tasks'>('notes');
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
+  const [coverTheme, setCoverTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      return localStorage.getItem('chronicle_theme') === 'dark' ? 'dark' : 'light';
+    } catch {
+      return 'light';
+    }
+  });
+  const [themeClickCount, setThemeClickCount] = useState(0);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
 
@@ -69,36 +89,89 @@ export const MainApp: React.FC = () => {
     day: 'numeric',
   }).format(new Date());
 
+  const handleToggleCoverTheme = () => {
+    const next = coverTheme === 'light' ? 'dark' : 'light';
+    setCoverTheme(next);
+    try {
+      localStorage.setItem('chronicle_theme', next);
+    } catch {
+      // ignore
+    }
+    setThemeClickCount((prev) => prev + 1);
+  };
+
+  const handleChronicleLogoClick = () => {
+    if (themeClickCount >= 2) {
+      setThemeClickCount(0);
+      setIsUnlockModalOpen(true);
+    } else {
+      setThemeClickCount(0);
+    }
+  };
+
   /* -------------------------------------------------------------------------- */
   /*                      LOCKED STATE: EDITORIAL COVER APP                     */
   /* -------------------------------------------------------------------------- */
   if (isLocked) {
+    const isDark = coverTheme === 'dark';
     return (
-      <div className="min-h-screen bg-parchment text-stone-800 flex flex-col font-sans transition-colors duration-300">
+      <div
+        className={`min-h-screen flex flex-col font-sans transition-colors duration-300 ${
+          isDark ? 'bg-[#171412] text-stone-200' : 'bg-parchment text-stone-800'
+        }`}
+      >
         {/* Cover Navigation Bar */}
-        <header className="sticky top-0 z-30 bg-[#fcfbf7]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-6 py-3.5">
+        <header
+          className={`sticky top-0 z-30 backdrop-blur-md border-b px-4 sm:px-6 py-3.5 transition-colors ${
+            isDark
+              ? 'bg-[#171412]/90 border-stone-800/80'
+              : 'bg-[#fcfbf7]/90 border-stone-200/80'
+          }`}
+        >
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             {/* Innocent Journal Title with an elegant monogram */}
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-stone-900 text-stone-100 flex items-center justify-center font-editorial text-sm font-semibold tracking-wider">
+            <button
+              type="button"
+              onClick={handleChronicleLogoClick}
+              className="flex items-center gap-3 text-left focus:outline-none"
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center font-editorial text-sm font-semibold tracking-wider transition-colors ${
+                  isDark ? 'bg-stone-200 text-stone-900' : 'bg-stone-900 text-stone-100'
+                }`}
+              >
                 C
               </div>
               <div>
-                <h1 className="font-editorial text-lg font-medium text-stone-900 leading-none">
+                <h1
+                  className={`font-editorial text-lg font-medium leading-none ${
+                    isDark ? 'text-stone-100' : 'text-stone-900'
+                  }`}
+                >
                   Chronicle
                 </h1>
                 <span className="text-[11px] font-mono-code text-stone-500">{todayFormatted}</span>
               </div>
-            </div>
+            </button>
 
             {/* Simple tab toggle: Notes / Tasks */}
-            <div className="flex items-center bg-stone-200/60 p-0.5 rounded-full border border-stone-300/50">
+            <div
+              className={`flex items-center p-0.5 rounded-full border ${
+                isDark
+                  ? 'bg-stone-900 border-stone-800'
+                  : 'bg-stone-200/60 border-stone-300/50'
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => setActiveTab('notes')}
                 className={`px-3.5 py-1 rounded-full text-xs font-medium transition-all ${
                   activeTab === 'notes'
-                    ? 'bg-white text-stone-900 shadow-sm'
+                    ? isDark
+                      ? 'bg-stone-800 text-stone-100 shadow-sm'
+                      : 'bg-white text-stone-900 shadow-sm'
+                    : isDark
+                    ? 'text-stone-400 hover:text-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -109,7 +182,11 @@ export const MainApp: React.FC = () => {
                 onClick={() => setActiveTab('tasks')}
                 className={`px-3.5 py-1 rounded-full text-xs font-medium transition-all ${
                   activeTab === 'tasks'
-                    ? 'bg-white text-stone-900 shadow-sm'
+                    ? isDark
+                      ? 'bg-stone-800 text-stone-100 shadow-sm'
+                      : 'bg-white text-stone-900 shadow-sm'
+                    : isDark
+                    ? 'text-stone-400 hover:text-stone-200'
                     : 'text-stone-600 hover:text-stone-900'
                 }`}
               >
@@ -117,7 +194,7 @@ export const MainApp: React.FC = () => {
               </button>
             </div>
 
-            {/* Right Action: innocent Add Entry + Secret Unlock Key */}
+            {/* Right Action: innocent Add Entry + Light/Dark Theme Toggle */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -126,21 +203,29 @@ export const MainApp: React.FC = () => {
                     ? setIsCoverNoteEditorOpen(true)
                     : setIsCoverTaskEditorOpen(true)
                 }
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-900 hover:bg-stone-800 text-stone-100 text-xs font-medium transition-colors shadow-sm"
+                className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors shadow-sm ${
+                  isDark
+                    ? 'bg-stone-200 hover:bg-white text-stone-900'
+                    : 'bg-stone-900 hover:bg-stone-800 text-stone-100'
+                }`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>New Entry</span>
               </button>
 
-              {/* The ONLY unlock button: minimalist, discreet key icon */}
+              {/* Light / Dark Theme Toggle */}
               <button
                 type="button"
-                onClick={() => setIsUnlockModalOpen(true)}
-                className="p-2 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors"
-                title="Access Vault"
-                aria-label="Unlock"
+                onClick={handleToggleCoverTheme}
+                className={`p-2 rounded-full transition-colors ${
+                  isDark
+                    ? 'text-stone-400 hover:text-stone-200 hover:bg-stone-800'
+                    : 'text-stone-500 hover:text-stone-800 hover:bg-stone-200/60'
+                }`}
+                title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+                aria-label="Toggle theme"
               >
-                <Key className="w-4 h-4" />
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
             </div>
           </div>
@@ -185,6 +270,16 @@ export const MainApp: React.FC = () => {
                   {coverTasks.length} lists
                 </span>
               </div>
+
+              <DailyChecklist
+                items={coverDailyTasks}
+                onAdd={addCoverDailyTask}
+                onToggle={toggleCoverDailyTask}
+                onDelete={deleteCoverDailyTask}
+                onClearCompleted={clearCoverCompletedDailyTasks}
+                variant={isDark ? 'cover-dark' : 'cover-light'}
+                title="Today's Daily Checklist"
+              />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {coverTasks.map((task) => (
@@ -415,6 +510,18 @@ export const MainApp: React.FC = () => {
                 {vaultTasks.length} lists
               </span>
             </div>
+
+            {!isEmergencyUnlocked && (
+              <DailyChecklist
+                items={vaultDailyTasks}
+                onAdd={addVaultDailyTask}
+                onToggle={toggleVaultDailyTask}
+                onDelete={deleteVaultDailyTask}
+                onClearCompleted={clearVaultCompletedDailyTasks}
+                variant="vault"
+                title="Encrypted Daily Checklist"
+              />
+            )}
 
             {vaultTasks.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

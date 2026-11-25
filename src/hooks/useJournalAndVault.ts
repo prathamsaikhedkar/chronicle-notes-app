@@ -4,6 +4,7 @@ import type {
   DecryptedTask,
   PublicCoverNote,
   PublicCoverTask,
+  TaskChecklistItem,
 } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { encryptData, decryptData } from '../services/crypto';
@@ -22,16 +23,34 @@ import {
   deleteCoverTask,
 } from '../services/storage';
 
+const VAULT_DAILY_ID = 'vault_daily_checklist';
+const COVER_DAILY_STORAGE_KEY = 'chronicle_daily_tasks';
+
+const DEFAULT_COVER_DAILY: TaskChecklistItem[] = [
+  { id: 'cd-1', text: 'Morning walk (20 mins)', completed: true },
+  { id: 'cd-2', text: 'Review reading notes', completed: false },
+  { id: 'cd-3', text: 'Pick up fresh groceries', completed: false },
+];
+
 export function useJournalAndVault() {
   const { activeKey, emergencyKey, isEmergencyUnlocked, isLocked } = useAuth();
 
   // Public cover journal state (shown when locked)
   const [coverNotes, setCoverNotes] = useState<PublicCoverNote[]>([]);
   const [coverTasks, setCoverTasks] = useState<PublicCoverTask[]>([]);
+  const [coverDailyTasks, setCoverDailyTasks] = useState<TaskChecklistItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(COVER_DAILY_STORAGE_KEY);
+      return saved ? (JSON.parse(saved) as TaskChecklistItem[]) : DEFAULT_COVER_DAILY;
+    } catch {
+      return DEFAULT_COVER_DAILY;
+    }
+  });
 
   // Secret vault state (shown when unlocked)
   const [vaultNotes, setVaultNotes] = useState<DecryptedNote[]>([]);
   const [vaultTasks, setVaultTasks] = useState<DecryptedTask[]>([]);
+  const [vaultDailyTasks, setVaultDailyTasks] = useState<TaskChecklistItem[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -52,6 +71,7 @@ export function useJournalAndVault() {
     if (!activeKey && !(isEmergencyUnlocked && emergencyKey)) {
       setVaultNotes([]);
       setVaultTasks([]);
+      setVaultDailyTasks([]);
       return;
     }
 
@@ -72,10 +92,15 @@ export function useJournalAndVault() {
         }
 
         const decTasks: DecryptedTask[] = [];
+        let dailyItems: TaskChecklistItem[] = [];
         for (const raw of rawTasks) {
           try {
             const t = await decryptData<DecryptedTask>(raw.ciphertext, raw.iv, activeKey);
-            decTasks.push({ ...t, confidentiality: raw.confidentiality, id: raw.id });
+            if (raw.id === VAULT_DAILY_ID) {
+              dailyItems = t.items || [];
+            } else {
+              decTasks.push({ ...t, confidentiality: raw.confidentiality, id: raw.id });
+            }
           } catch (e) {
             console.error('Decryption failed for task', raw.id, e);
           }
@@ -83,6 +108,7 @@ export function useJournalAndVault() {
 
         setVaultNotes(decNotes.sort((a, b) => b.updatedAt - a.updatedAt));
         setVaultTasks(decTasks.sort((a, b) => b.updatedAt - a.updatedAt));
+        setVaultDailyTasks(dailyItems);
       } else if (isEmergencyUnlocked && emergencyKey) {
         // Emergency puzzle recovery: only decipher semi-confidential records!
         const recNotes: DecryptedNote[] = [];
@@ -98,11 +124,16 @@ export function useJournalAndVault() {
         }
 
         const recTasks: DecryptedTask[] = [];
+        let dailyItems: TaskChecklistItem[] = [];
         for (const raw of rawTasks) {
           if (raw.confidentiality === 'semi-confidential' && raw.emergencyKeyCiphertext && raw.emergencyKeyIv) {
             try {
               const t = await decryptData<DecryptedTask>(raw.emergencyKeyCiphertext, raw.emergencyKeyIv, emergencyKey);
-              recTasks.push({ ...t, confidentiality: raw.confidentiality, id: raw.id });
+              if (raw.id === VAULT_DAILY_ID) {
+                dailyItems = t.items || [];
+              } else {
+                recTasks.push({ ...t, confidentiality: raw.confidentiality, id: raw.id });
+              }
             } catch (e) {
               console.error('Emergency decryption error for task', raw.id, e);
             }
@@ -111,6 +142,7 @@ export function useJournalAndVault() {
 
         setVaultNotes(recNotes.sort((a, b) => b.updatedAt - a.updatedAt));
         setVaultTasks(recTasks.sort((a, b) => b.updatedAt - a.updatedAt));
+        setVaultDailyTasks(dailyItems);
       }
     } catch (e) {
       console.error('Error refreshing vault data', e);
@@ -269,24 +301,109 @@ export function useJournalAndVault() {
     await refreshVaultData();
   };
 
+  // --- Cover Daily Tasks ---
+  const persistCoverDaily = (next: TaskChecklistItem[]) => {
+    setCoverDailyTasks(next);
+    try {
+      localStorage.setItem(COVER_DAILY_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // ignore storage quota errors
+    }
+  };
+
+  const addCoverDailyTask = (text: string) => {
+    const next = [...coverDailyTasks, { id: `cd-${Date.now()}`, text, completed: false }];
+    persistCoverDaily(next);
+  };
+
+  const toggleCoverDailyTask = (id: string) => {
+    const next = coverDailyTasks.map((it) => (it.id === id ? { ...it, completed: !it.completed } : it));
+    persistCoverDaily(next);
+  };
+
+  const deleteCoverDailyTask = (id: string) => {
+    const next = coverDailyTasks.filter((it) => it.id !== id);
+    persistCoverDaily(next);
+  };
+
+  const clearCoverCompletedDailyTasks = () => {
+    const next = coverDailyTasks.filter((it) => !it.completed);
+    persistCoverDaily(next);
+  };
+
+  // --- Vault Daily Tasks (Encrypted) ---
+  const persistVaultDaily = async (next: TaskChecklistItem[]) => {
+    if (!activeKey) return;
+    setVaultDailyTasks(next);
+    const now = Date.now();
+    const payload: DecryptedTask = {
+      id: VAULT_DAILY_ID,
+      title: 'Daily Checklist',
+      items: next,
+      priority: 'medium',
+      confidentiality: 'strictly-confidential',
+      createdAt: now,
+      updatedAt: now,
+    };
+    const masterEnc = await encryptData(payload, activeKey);
+    await saveEncryptedTask({
+      id: VAULT_DAILY_ID,
+      iv: masterEnc.iv,
+      ciphertext: masterEnc.ciphertext,
+      confidentiality: 'strictly-confidential',
+      createdAt: now,
+      updatedAt: now,
+    });
+  };
+
+  const addVaultDailyTask = async (text: string) => {
+    const next = [...vaultDailyTasks, { id: `vd-${Date.now()}`, text, completed: false }];
+    await persistVaultDaily(next);
+  };
+
+  const toggleVaultDailyTask = async (id: string) => {
+    const next = vaultDailyTasks.map((it) => (it.id === id ? { ...it, completed: !it.completed } : it));
+    await persistVaultDaily(next);
+  };
+
+  const deleteVaultDailyTask = async (id: string) => {
+    const next = vaultDailyTasks.filter((it) => it.id !== id);
+    await persistVaultDaily(next);
+  };
+
+  const clearVaultCompletedDailyTasks = async () => {
+    const next = vaultDailyTasks.filter((it) => !it.completed);
+    await persistVaultDaily(next);
+  };
+
   return {
     isLoading,
     // Cover
     coverNotes,
     coverTasks,
+    coverDailyTasks,
     addCoverNote,
     removeCoverNote,
     addCoverTask,
     toggleCoverTaskItem,
     removeCoverTask,
+    addCoverDailyTask,
+    toggleCoverDailyTask,
+    deleteCoverDailyTask,
+    clearCoverCompletedDailyTasks,
     // Vault
     vaultNotes,
     vaultTasks,
+    vaultDailyTasks,
     saveVaultNote,
     removeVaultNote,
     saveVaultTask,
     toggleVaultTaskItem,
     removeVaultTask,
+    addVaultDailyTask,
+    toggleVaultDailyTask,
+    deleteVaultDailyTask,
+    clearVaultCompletedDailyTasks,
     refreshVaultData,
   };
 }
