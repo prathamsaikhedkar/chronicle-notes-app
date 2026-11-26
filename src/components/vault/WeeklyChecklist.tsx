@@ -27,7 +27,7 @@ interface WeeklyChecklistProps {
   onAdd: (day: WeekdayKey, text: string) => void;
   onToggle: (day: WeekdayKey, id: string) => void;
   onDelete: (day: WeekdayKey, id: string) => void;
-  onClearCompleted: (day: WeekdayKey) => void;
+  onUncheckAll: (day: WeekdayKey) => void;
 }
 
 export const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({
@@ -35,7 +35,7 @@ export const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({
   onAdd,
   onToggle,
   onDelete,
-  onClearCompleted,
+  onUncheckAll,
 }) => {
   const [selectedDay, setSelectedDay] = useState<WeekdayKey>(getTodayWeekdayKey);
   const [newItemText, setNewItemText] = useState('');
@@ -68,10 +68,10 @@ export const WeeklyChecklist: React.FC<WeeklyChecklistProps> = ({
           {completedCount > 0 && (
             <button
               type="button"
-              onClick={() => onClearCompleted(selectedDay)}
+              onClick={() => onUncheckAll(selectedDay)}
               className="text-[11px] font-medium underline underline-offset-2 text-stone-400 hover:text-amber-300 transition-colors"
             >
-              Clear done
+              Uncheck all
             </button>
           )}
         </div>

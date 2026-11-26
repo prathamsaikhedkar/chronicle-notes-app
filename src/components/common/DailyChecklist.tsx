@@ -12,7 +12,7 @@ interface DailyChecklistProps {
   onAdd: (text: string) => void;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  onClearCompleted: () => void;
+  onUncheckAll: () => void;
   variant: 'cover-light' | 'cover-dark' | 'vault';
   title?: string;
 }
@@ -22,7 +22,7 @@ export const DailyChecklist: React.FC<DailyChecklistProps> = ({
   onAdd,
   onToggle,
   onDelete,
-  onClearCompleted,
+  onUncheckAll,
   variant,
   title = "Today's Checklist",
 }) => {
@@ -77,7 +77,7 @@ export const DailyChecklist: React.FC<DailyChecklistProps> = ({
           {completedCount > 0 && (
             <button
               type="button"
-              onClick={onClearCompleted}
+              onClick={onUncheckAll}
               className={`text-[11px] font-medium underline underline-offset-2 transition-colors ${
                 isVault
                   ? 'text-stone-400 hover:text-amber-300'
@@ -86,7 +86,7 @@ export const DailyChecklist: React.FC<DailyChecklistProps> = ({
                   : 'text-stone-500 hover:text-stone-800'
               }`}
             >
-              Clear done
+              Uncheck all
             </button>
           )}
         </div>

@@ -45,7 +45,7 @@ export const MainApp: React.FC = () => {
     addCoverDailyTask,
     toggleCoverDailyTask,
     deleteCoverDailyTask,
-    clearCoverCompletedDailyTasks,
+    uncheckAllCoverDailyTasks,
     vaultNotes,
     vaultTasks,
     vaultDailyTasks,
@@ -58,11 +58,11 @@ export const MainApp: React.FC = () => {
     addVaultDailyTask,
     toggleVaultDailyTask,
     deleteVaultDailyTask,
-    clearVaultCompletedDailyTasks,
+    uncheckAllVaultDailyTasks,
     addVaultWeeklyTask,
     toggleVaultWeeklyTask,
     deleteVaultWeeklyTask,
-    clearVaultWeeklyCompleted,
+    uncheckAllVaultWeeklyTasks,
     refreshVaultData,
   } = useJournalAndVault();
 
@@ -282,7 +282,7 @@ export const MainApp: React.FC = () => {
                 onAdd={addCoverDailyTask}
                 onToggle={toggleCoverDailyTask}
                 onDelete={deleteCoverDailyTask}
-                onClearCompleted={clearCoverCompletedDailyTasks}
+                onUncheckAll={uncheckAllCoverDailyTasks}
                 variant={isDark ? 'cover-dark' : 'cover-light'}
                 title="Today's Daily Checklist"
               />
@@ -524,7 +524,7 @@ export const MainApp: React.FC = () => {
                   onAdd={addVaultDailyTask}
                   onToggle={toggleVaultDailyTask}
                   onDelete={deleteVaultDailyTask}
-                  onClearCompleted={clearVaultCompletedDailyTasks}
+                  onUncheckAll={uncheckAllVaultDailyTasks}
                   variant="vault"
                   title="Encrypted Daily Checklist"
                 />
@@ -533,7 +533,7 @@ export const MainApp: React.FC = () => {
                   onAdd={addVaultWeeklyTask}
                   onToggle={toggleVaultWeeklyTask}
                   onDelete={deleteVaultWeeklyTask}
-                  onClearCompleted={clearVaultWeeklyCompleted}
+                  onUncheckAll={uncheckAllVaultWeeklyTasks}
                 />
               </>
             )}
